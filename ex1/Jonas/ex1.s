@@ -1,139 +1,203 @@
-        .syntax unified
+.syntax unified
+
+.include "efm32gg.s"
+
+// Exception vector table
+// This table contains addresses for all exception handlers
+
+.section .vectors
+
+    .long   stack_top               /* Top of Stack                 */
+    .long   _reset                  /* Reset Handler                */
+    .long   dummy_handler           /* NMI Handler                  */
+    .long   dummy_handler           /* Hard Fault Handler           */
+    .long   dummy_handler           /* MPU Fault Handler            */
+    .long   dummy_handler           /* Bus Fault Handler            */
+    .long   dummy_handler           /* Usage Fault Handler          */
+    .long   dummy_handler           /* Reserved                     */
+    .long   dummy_handler           /* Reserved                     */
+    .long   dummy_handler           /* Reserved                     */
+    .long   dummy_handler           /* Reserved                     */
+    .long   dummy_handler           /* SVCall Handler               */
+    .long   dummy_handler           /* Debug Monitor Handler        */
+    .long   dummy_handler           /* Reserved                     */
+    .long   dummy_handler           /* PendSV Handler               */
+    .long   dummy_handler           /* SysTick Handler              */
+
+    /* External Interrupts */
+    .long   dummy_handler
+    .long   int_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   int_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+    .long   dummy_handler
+
+
+.section .text
+
+// Reset handler
+// The CPU will start executing here after a reset
+
+.globl  _reset
+.type   _reset, %function
+.thumb_func
+_reset:
+    // power down RAM blocks 1-3 to save energy
+    // saves only about 0.5 uA in theory, reading shows like 0.2 uA difference?
+    ldr r0, =EMU_BASE
+    ldr r1, =7
+    str r1, [r0, #EMU_MEMCTRL]
+
+    // configure clocks
+    ldr r0, =CMU_BASE
+
+    // switch to low frequency clock to save energy
+    // lets power consumption go from 3.5 mA down to 42.4 uA
+    // enable it
+    ldr r1, =(1 << CMU_OSCENCMD_LFRCOEN)
+    str r1, [r0, #CMU_OSCENCMD]
+    // switch to it
+    ldr r1, =(3 << CMU_CMD_HFCLKSEL)
+    str r1, [r0, #CMU_CMD]
+    // disable high frequency clock
+    ldr r1, =(1 << CMU_OSCENCMD_HFRCODIS)
+    str r1, [r0, #CMU_OSCENCMD]
+
+    // enable GPIO clock
+    ldr r1, [r0, #CMU_HFPERCLKEN0]
+    orr r1, r1, #(1 << CMU_HFPERCLKEN0_GPIO)
+    str r1, [r0, #CMU_HFPERCLKEN0]
+
+
+    // init LEDs (GPIO_PA)
+    ldr r0, =GPIO_PA_BASE
+
+    // set high drive strength
+    ldr r1, =1                  // easier on the eyes than 2
+    str r1, [r0, #GPIO_CTRL]
+
+    // set pins 8-15 to output
+    ldr r1, =0x55555555
+    str r1, [r0, #GPIO_MODEH]
+
+    // turn off LEDs
+    ldr r1, =(0xff << 8)
+    str r1, [r0, #GPIO_DOUT]
+
+
+    // init buttons (GPIO_PC)
+    ldr r0, =GPIO_PC_BASE
+
+    // set pins 8-15 to output
+    ldr r1, =0x33333333
+    str r1, [r0, #GPIO_MODEL]
+
+    // enable internal pull-up
+    ldr r1, =0xff
+    str r1, [r0, #GPIO_DOUT]
+    
+    
+    
+    //interrupt on rising and falling edge
+	ldr r1, = 0xff
+//	str r1, [r5, #GPIO_EXTIFALL]
+	str r1, [r5, #GPIO_EXTIRISE]
 	
-	      .include "efm32gg.s"
-
-	/////////////////////////////////////////////////////////////////////////////
-	//
-  // Exception vector table
-  // This table contains addresses for all exception handlers
-	//
-	/////////////////////////////////////////////////////////////////////////////
+	//enable interrupt generation
+	str r1, [r5, #GPIO_IEN]
 	
-        .section .vectors
+	//eneable interrupt handling
+	ldr r2, =ISER0
+	ldr r1, =0x802
+	str r1, [r2]
 	
-	      .long   stack_top               /* Top of Stack                 */
-	      .long   _reset                  /* Reset Handler                */
-	      .long   dummy_handler           /* NMI Handler                  */
-	      .long   dummy_handler           /* Hard Fault Handler           */
-	      .long   dummy_handler           /* MPU Fault Handler            */
-	      .long   dummy_handler           /* Bus Fault Handler            */
-	      .long   dummy_handler           /* Usage Fault Handler          */
-	      .long   dummy_handler           /* Reserved                     */
-	      .long   dummy_handler           /* Reserved                     */
-	      .long   dummy_handler           /* Reserved                     */
-	      .long   dummy_handler           /* Reserved                     */
-	      .long   dummy_handler           /* SVCall Handler               */
-	      .long   dummy_handler           /* Debug Monitor Handler        */
-	      .long   dummy_handler           /* Reserved                     */
-	      .long   dummy_handler           /* PendSV Handler               */
-	      .long   dummy_handler           /* SysTick Handler              */
-
-	      /* External Interrupts */
-	      .long   dummy_handler
-	      .long   gpio_handler            /* GPIO even handler */
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   gpio_handler            /* GPIO odd handler */
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-	      .long   dummy_handler
-
-	      .section .text
-
-	/////////////////////////////////////////////////////////////////////////////
-	//
-	// Reset handler
-  // The CPU will start executing here after a reset
-	//
-	/////////////////////////////////////////////////////////////////////////////
-
-	      .globl  _reset
-	      .type   _reset, %function
-        .thumb_func
-_reset: 
-	      // Enable GPIO clock in CMU
-		  ldr r1, =CMU_BASE
-		  ldr r2, [r1, #CMU_HFPERCLKEN0]		  
-		  mov r3, #1
-		  lsl r3, r3, #CMU_HFPERCLKEN0_GPIO
-		  orr r2, r2, r3		  
-		  str r2, [r1, #CMU_HFPERCLKEN0]
-		  
-		  
-		  // Setting pin 8-15 for output
-		  ldr r5, =GPIO_PA_BASE
-		  ldr r1, =0x2
-		  str r1, [r5, #GPIO_CTRL]		  
-		  ldr r1, =0x55555555
-		  str r1, [r5, #GPIO_MODEH]
-		  
-		  // setting pins 0-7 up to be read
-		  ldr r5, =GPIO_PC_BASE
-		  ldr r1, =0x33333333
-		  str r1, [r5, #GPIO_MODEL]
-		  
-		  ldr r1, =0xff					// enable internal pull_up for buttons
-		  str r1, [r5, #GPIO_DOUT]
-		  
-		  
-		  //initialization to be made
-		  
-		  
-// main loop iteration
-		.thumb_func
-main:
-		//to be programmed
-		  
-
-
-// methods for moving LED and check if led at edge		 
+	//enable deep sleep
+	ldr r2, =SCR
+	ldr r1, =0x6
+	str r1, [r2]
 	
-	/////////////////////////////////////////////////////////////////////////////
-	//
-  // GPIO handler
-  // The CPU will jump here when there is a GPIO interrupt
-	//
-	/////////////////////////////////////////////////////////////////////////////
 	
-        .thumb_func
-gpio_handler:  
+	// clear interrupt flags
+    ldr r0, =GPIO_BASE
+    ldr r1, [r0, GPIO_IF]
+	
+	
+	
+	wfi
 
-	      b .  // do nothing
+
+.thumb_func
+main_loop:
+
+
+    bl read_buttons
+
+    // write to LEDs
+    ldr r1, =GPIO_PA_BASE
+    lsl r0, r0, #8
+    str r0, [r1, #GPIO_DOUT]
+    
 	
-	/////////////////////////////////////////////////////////////////////////////
+    bx LR
 	
-        .thumb_func
-dummy_handler:  
-        b .  // do nothing
+	
+
+
+// returns button status in r0
+.thumb_func
+read_buttons:
+    // read button status
+    ldr r1, =GPIO_PC_BASE
+    ldr r0, [r1, #GPIO_DIN]
+    bx LR
+
+
+.thumb_func
+int_handler:
+	bl main_loop
+
+	// clearing interrupt
+    ldr r5, =GPIO_BASE
+    ldr r3, [r5, GPIO_IF]   
+    str r3, [r5, #GPIO_IFC]
+    mvn r3, r3
+	
+
+.thumb_func
+dummy_handler:
+    b .  // do nothing
+
 
