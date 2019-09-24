@@ -121,7 +121,7 @@ _reset:
     // init buttons (GPIO_PC)
     ldr r0, =GPIO_PC_BASE
 
-    // set pins 8-15 to output
+    // set pins 0-7 to input
     ldr r1, =0x33333333
     str r1, [r0, #GPIO_MODEL]
 
@@ -133,16 +133,11 @@ _reset:
 .thumb_func
 main_loop:
     bl read_buttons
-
-    // write to LEDs
-    ldr r1, =GPIO_PA_BASE
-    lsl r0, r0, #8
-    str r0, [r1, #GPIO_DOUT]
-
+    bl write_leds
     b main_loop
 
 
-// returns button status in r0
+// returns button status in bits 0-7 of r0
 .thumb_func
 read_buttons:
     // read button status
@@ -151,7 +146,15 @@ read_buttons:
     bx LR
 
 
+// write state given by bits 0-7 of r0 to LEDs
+.thumb_func
+write_leds:
+    ldr r1, =GPIO_PA_BASE
+    lsl r0, r0, #8
+    str r0, [r1, #GPIO_DOUT]
+    bx LR
+
+
 .thumb_func
 dummy_handler:
     b .  // do nothing
-

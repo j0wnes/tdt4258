@@ -1,11 +1,11 @@
-    .syntax unified
+.syntax unified
 
-    .include "efm32gg.s"
+.include "efm32gg.s"
 
 // Exception vector table
 // This table contains addresses for all exception handlers
 
-    .section .vectors
+.section .vectors
 
     .long   stack_top               /* Top of Stack                 */
     .long   _reset                  /* Reset Handler                */
@@ -66,17 +66,26 @@
     .long   dummy_handler
 
 
-    .section .text
+.section .text
 
 // Reset handler
 // The CPU will start executing here after a reset
 
-    .globl  _reset
-    .type   _reset, %function
-    .thumb_func
+.globl  _reset
+.type   _reset, %function
+.thumb_func
 _reset:
-    // enable GPIO clock
+    // power down RAM blocks 1-3 to save energy
+    // saves only about 0.5 uA in theory, reading shows like 0.2 uA difference?
+    ldr r0, =EMU_BASE
+    ldr r1, =7
+    str r1, [r0, #EMU_MEMCTRL]
+
+
+    // configure clocks
     ldr r0, =CMU_BASE
+
+    // enable GPIO clock
     ldr r1, [r0, #CMU_HFPERCLKEN0]
     orr r1, r1, #(1 << CMU_HFPERCLKEN0_GPIO)
     str r1, [r0, #CMU_HFPERCLKEN0]
@@ -101,7 +110,7 @@ _reset:
     // init buttons (GPIO_PC)
     ldr r0, =GPIO_PC_BASE
 
-    // set pins 8-15 to output
+    // set pins 0-7 to input
     ldr r1, =0x33333333
     str r1, [r0, #GPIO_MODEL]
 
@@ -110,28 +119,73 @@ _reset:
     str r1, [r0, #GPIO_DOUT]
 
 
-main_loop:
+    // configure interrupts
+    ldr r0, =GPIO_BASE
+
+    // select GPIO Port C for external interrupts 0-7
+    ldr r1, =0x22222222
+    str r1, [r0, #GPIO_EXTIPSELL]
+
+    // activate triggering of interrupts for rising and falling edges
+    ldr r1, =0xff
+    str r1, [r0, #GPIO_EXTIRISE]
+    str r1, [r0, #GPIO_EXTIFALL]
+
+    // enable GPIO interrupt generation
+    // r1 = 0xff
+    str r1, [r0, #GPIO_IEN]
+
+    // enable deep sleep and sleep on return from interrupt
+    ldr r0, =SCR
+    ldr r1, =6
+    str r1, [r0]
+
+
+    // all set up, so finally enable interrupt handling
+    ldr r0, =ISER0
+    ldr r1, =0x802
+    str r1, [r0]
+
+    // ready and waiting for button presses
+    wfi
+
+
+// returns button status in bits 0-7 of r0
+.thumb_func
+read_buttons:
     // read button status
-    ldr r0, =GPIO_PC_BASE
-    ldr r1, [r0, #GPIO_DIN]
+    ldr r1, =GPIO_PC_BASE
+    ldr r0, [r1, #GPIO_DIN]
+    bx LR
 
-    // write to LEDs
-    ldr r0, =GPIO_PA_BASE
-    lsl r1, r1, #8
-    str r1, [r0, #GPIO_DOUT]
 
-    b main_loop
+// write state given by bits 0-7 of r0 to LEDs
+.thumb_func
+write_leds:
+    ldr r1, =GPIO_PA_BASE
+    lsl r0, r0, #8
+    str r0, [r1, #GPIO_DOUT]
+    bx LR
 
 
 // GPIO handler
-// The CPU will jump here when there is a GPIO interrupt
-
-    
+// The CPU will jump here when there is a GPIO interrupt   
+.thumb_func
 gpio_handler:
-    b .  // do nothing
+    push {LR}
+
+    bl read_buttons
+    bl write_leds
+
+    // clear the interrupt
+    ldr r1, =GPIO_BASE
+    ldr r0, [r1, #GPIO_IF]
+    str r0, [r1, #GPIO_IFC]
+
+    pop {LR}
+    bx LR
 
 
-    .thumb_func
+.thumb_func
 dummy_handler:
     b .  // do nothing
-
