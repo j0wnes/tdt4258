@@ -1,11 +1,11 @@
-    .syntax unified
+.syntax unified
 
-    .include "efm32gg.s"
+.include "efm32gg.s"
 
 // Exception vector table
 // This table contains addresses for all exception handlers
 
-    .section .vectors
+.section .vectors
 
     .long   stack_top               /* Top of Stack                 */
     .long   _reset                  /* Reset Handler                */
@@ -26,7 +26,6 @@
 
     /* External Interrupts */
     .long   dummy_handler
-    .long   gpio_handler            /* GPIO even handler */
     .long   dummy_handler
     .long   dummy_handler
     .long   dummy_handler
@@ -36,7 +35,8 @@
     .long   dummy_handler
     .long   dummy_handler
     .long   dummy_handler
-    .long   gpio_handler            /* GPIO odd handler */
+    .long   dummy_handler
+    .long   dummy_handler
     .long   dummy_handler
     .long   dummy_handler
     .long   dummy_handler
@@ -66,17 +66,37 @@
     .long   dummy_handler
 
 
-    .section .text
+.section .text
 
 // Reset handler
 // The CPU will start executing here after a reset
 
-    .globl  _reset
-    .type   _reset, %function
-    .thumb_func
+.globl  _reset
+.type   _reset, %function
+.thumb_func
 _reset:
-    // enable GPIO clock
+    // power down RAM blocks 1-3 to save energy
+    // saves only about 0.5 uA in theory, reading shows like 0.2 uA difference?
+    ldr r0, =EMU_BASE
+    ldr r1, =7
+    str r1, [r0, #EMU_MEMCTRL]
+
+    // configure clocks
     ldr r0, =CMU_BASE
+
+    // switch to low frequency clock to save energy
+    // lets power consumption go from 3.5 mA down to 42.4 uA
+    // enable it
+    ldr r1, =(1 << CMU_OSCENCMD_LFRCOEN)
+    str r1, [r0, #CMU_OSCENCMD]
+    // switch to it
+    ldr r1, =(3 << CMU_CMD_HFCLKSEL)
+    str r1, [r0, #CMU_CMD]
+    // disable high frequency clock
+    ldr r1, =(1 << CMU_OSCENCMD_HFRCODIS)
+    str r1, [r0, #CMU_OSCENCMD]
+
+    // enable GPIO clock
     ldr r1, [r0, #CMU_HFPERCLKEN0]
     orr r1, r1, #(1 << CMU_HFPERCLKEN0_GPIO)
     str r1, [r0, #CMU_HFPERCLKEN0]
@@ -110,28 +130,28 @@ _reset:
     str r1, [r0, #GPIO_DOUT]
 
 
+.thumb_func
 main_loop:
-    // read button status
-    ldr r0, =GPIO_PC_BASE
-    ldr r1, [r0, #GPIO_DIN]
+    bl read_buttons
 
     // write to LEDs
-    ldr r0, =GPIO_PA_BASE
-    lsl r1, r1, #8
-    str r1, [r0, #GPIO_DOUT]
+    ldr r1, =GPIO_PA_BASE
+    lsl r0, r0, #8
+    str r0, [r1, #GPIO_DOUT]
 
     b main_loop
 
 
-// GPIO handler
-// The CPU will jump here when there is a GPIO interrupt
+// returns button status in r0
+.thumb_func
+read_buttons:
+    // read button status
+    ldr r1, =GPIO_PC_BASE
+    ldr r0, [r1, #GPIO_DIN]
+    bx LR
 
-    
-gpio_handler:
-    b .  // do nothing
 
-
-    .thumb_func
+.thumb_func
 dummy_handler:
     b .  // do nothing
 

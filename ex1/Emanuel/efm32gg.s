@@ -45,7 +45,15 @@
     CMU_BASE = 0x400c8000
 
     CMU_HFPERCLKDIV = 0x008
+    CMU_OSCENCMD = 0x020
+    CMU_CMD = 0x024
+    CMU_STATUS = 0x02c
     CMU_HFPERCLKEN0 = 0x044
+
+    CMU_OSCENCMD_HFRCODIS = 1
+    CMU_OSCENCMD_LFRCOEN = 6
+
+    CMU_CMD_HFCLKSEL = 0
 
     CMU_HFPERCLKEN0_GPIO = 13
 
@@ -74,6 +82,7 @@
     EMU_BASE = 0x400c6000
 
     EMU_CTRL = 0x000
+    EMU_MEMCTRL = 0x004
 
     //////////////////////////////////////////////////////////////////////
     // System Control Block
