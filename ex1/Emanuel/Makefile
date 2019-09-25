@@ -11,41 +11,45 @@ ASFLAGS=-mcpu=cortex-m3 -mthumb -g
 
 LINKERSCRIPT=efm32gg.ld
 
-all: ex1.bin ex1_basic.bin
+FILE1=ex1_fancy
+FILE2=ex1_interrupt
+FILE3=ex1_basic
+
+all: ${FILE1} ${FILE2} ${FILE3}
 .PHONY: all
 
-ex1: ex1.bin
-.PHONY: ex1
-ex1_basic: ex1_basic.bin
-.PHONY: ex1_basic
+${FILE1}: ${FILE1}.bin
+.PHONY: ${FILE1}
+${FILE2}: ${FILE2}.bin
+.PHONY: ${FILE2}
+${FILE3}: ${FILE3}.bin
+.PHONY: ${FILE3}
 
-ex1.bin : ex1.elf
+.PRECIOUS: %.elf %.o
+
+%.bin : %.elf
 	${OBJCOPY} -j .text -O binary $< $@
 
-ex1.elf : ex1.o
+%.elf : %.o
 	${LD} -T ${LINKERSCRIPT} $^ -o $@ ${LDFLAGS} 
 
-ex1.o : ex1.s
+%.o : %.s
 	${AS} ${ASFLAGS} $< -o $@
 
-ex1_basic.bin : ex1_basic.elf
-	${OBJCOPY} -j .text -O binary $< $@
+.PHONY : upload_fancy
+upload_fancy :
+#	-eACommander.sh -r --address 0x00000000 --speed 200 -f "${FILE1}.bin" -r
+	-commander flash "${FILE1}.bin" --address 0x00000000 --speed 200
 
-ex1_basic.elf : ex1_basic.o 
-	${LD} -T ${LINKERSCRIPT} $^ -o $@ ${LDFLAGS} 
-
-ex1_basic.o : ex1_basic.s
-	${AS} ${ASFLAGS} $< -o $@
-
-.PHONY : upload
-upload :
-#	-eACommander.sh -r --address 0x00000000 -f "ex1.bin" -r
-	-commander flash "ex1.bin" --address 0x00000000 --speed 200
+.PHONY : upload_interrupt
+upload_interrupt :
+#	-eACommander.sh -r --address 0x00000000 --speed 200 -f "${FILE2}.bin" -r
+	-commander flash "${FILE2}.bin" --address 0x00000000 --speed 200
 
 .PHONY : upload_basic
 upload_basic :
-#	-eACommander.sh -r --address 0x00000000 -f "ex1_basic.bin" -r
-	-commander flash "ex1_basic.bin" --address 0x00000000 --speed 200
+#	-eACommander.sh -r --address 0x00000000 --speed 200 -f "${FILE3}.bin" -r
+	-commander flash "${FILE3}.bin" --address 0x00000000 --speed 200
 
 .PHONY : clean
 clean :
