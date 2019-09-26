@@ -95,7 +95,7 @@ _reset:
     ldr r0, =GPIO_PA_BASE
 
     // set high drive strength
-    ldr r1, =1                  // easier on the eyes than 2
+    ldr r1, =2
     str r1, [r0, #GPIO_CTRL]
 
     // set pins 8-15 to output
@@ -126,19 +126,27 @@ _reset:
     ldr r1, =0x22222222
     str r1, [r0, #GPIO_EXTIPSELL]
 
-    // activate triggering of interrupts for rising and falling edges
+    // activate triggering of interrupts for rising edges
     ldr r1, =0xff
     str r1, [r0, #GPIO_EXTIRISE]
-    str r1, [r0, #GPIO_EXTIFALL]
 
     // enable GPIO interrupt generation
     // r1 = 0xff
     str r1, [r0, #GPIO_IEN]
 
+    // reset GPIO interrupt flags to make sure they are all inactive
+    ldr r1, [r0, #GPIO_IF]
+    str r1, [r0, #GPIO_IFC]
+
+
     // enable deep sleep and sleep on return from interrupt
     ldr r0, =SCR
     ldr r1, =6
     str r1, [r0]
+
+    // r11 always holds the current LED position
+    // set initial LED position to 0 for LED 1
+    ldr r11, =0
 
 
     // all set up, so finally enable interrupt handling
@@ -150,21 +158,45 @@ _reset:
     wfi
 
 
-// returns button status in bits 0-7 of r0
 .thumb_func
-read_buttons:
-    // read button status
-    ldr r1, =GPIO_PC_BASE
-    ldr r0, [r1, #GPIO_DIN]
+move_left:
+    // check if at the beginning
+    cmp r11, #0
+    // if not substract 1
+    it ne
+    subne r11, #1
     bx LR
 
-
-// write state given by bits 0-7 of r0 to LEDs
 .thumb_func
-write_leds:
-    ldr r1, =GPIO_PA_BASE
-    lsl r0, r0, #8
-    str r0, [r1, #GPIO_DOUT]
+move_right:
+    // check if at the end
+    cmp r11, #7
+    // if not add 1
+    it ne
+    addne r11, #1
+    bx LR
+
+.thumb_func
+toggle_intensity:
+    // load current intensity
+    ldr r0, =GPIO_PA_BASE
+    ldr r1, [r0, #GPIO_CTRL]
+    // if 2 set to 1, if not, set to 2
+    cmp r1, #2
+    ite eq
+    ldreq r1, =1
+    ldrne r1, =2
+    str r1, [r0, #GPIO_CTRL]
+    bx LR
+
+.thumb_func
+toggle_led:
+    // put 1 in current position
+    ldr r1, =(1 << 8)
+    lsl r1, r1, r11
+    // toggle it
+    ldr r0, =GPIO_PA_BASE
+    str r1, [r0, #GPIO_DOUTTGL]
     bx LR
 
 
@@ -174,8 +206,29 @@ write_leds:
 gpio_handler:
     push {LR}
 
-    bl read_buttons
-    bl write_leds
+    // read which button triggered the interrupt
+    ldr r1, =GPIO_BASE
+    ldr r0, [r1, #GPIO_IF]
+
+    // left button pressed on either of the button crosses
+    ands r2, r0, #0b00010001
+    it ne
+    blne move_left
+
+    // right button pressed on either of the button crosses
+    ands r2, r0, #0b01000100
+    it ne
+    blne move_right
+
+    // up button pressed on either of the button crosses
+    ands r2, r0, #0b00100010
+    it ne
+    blne toggle_intensity
+
+    // down button pressed on either of the button crosses
+    ands r2, r0, #0b10001000
+    it ne
+    blne toggle_led
 
     // clear the interrupt
     ldr r1, =GPIO_BASE
