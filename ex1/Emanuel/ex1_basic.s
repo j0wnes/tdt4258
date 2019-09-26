@@ -106,7 +106,7 @@ _reset:
     ldr r0, =GPIO_PA_BASE
 
     // set high drive strength
-    ldr r1, =1                  // easier on the eyes than 2
+    ldr r1, =2
     str r1, [r0, #GPIO_CTRL]
 
     // set pins 8-15 to output
