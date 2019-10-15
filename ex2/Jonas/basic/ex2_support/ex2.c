@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "efm32gg.h"
-#include "sound_gen.h"
+// #include "sound_gen.h"
 #include "dac.h"
 #include "gpio.h"
 #include "timer.h"
@@ -19,13 +20,22 @@
  */
 #define   SAMPLE_PERIOD   317       // about 44.1 kHz (14M/44,1k)
 
+typedef struct
+{
+    uint32_t length;
+    uint32_t sampling_rate;
+    uint16_t *sound_files;
+} sample;
+
+
 /*
  * Declaration of peripheral setup functions 
  */
 void setupTimer(uint16_t period);
 void setupDAC();
 void setupNVIC();
-
+void sinGenerate(sample *sample, double accoustFreq, double sampleRate);
+void playSample(sample *sample);
 /*
  * Your code will start executing here 
  */
@@ -47,12 +57,16 @@ int main(void)
 	 * TODO for higher energy efficiency, sleep while waiting for
 	 * interrupts instead of infinite loop for busy-waiting 
 	 */
+	 
+	 
+	 
+
 
 	sample sample1;
 
 	while (1)
     {
-	    int b = buttonReadout();
+	    int b = (int) buttonReadout();
 	    // lighting LEDs according to pressed butotn
 	    updateLED();
 	    // actions for each button
@@ -60,18 +74,18 @@ int main(void)
         {
             case 0: break;
             case 1: {
-                        sinGenerate(&sample1, 400.0, 44100);
+                        sinGenerate(&sample1, 400.0, 44100);                  
                         break;
                     }
             case 2: break;
-            case 3: break;
             case 4: break;
-            case 5: break;
-            case 6: break;
-            case 7: break;
+            case 8: break;
+            case 16: break;
+            case 32: break;
+            case 64: break;
             default: break;
         }
-        playSample(&sample1, b);
+        playSample(&sample1);
 
     }
 	return 0;
@@ -109,3 +123,39 @@ void setupNVIC()
  * BURTC_IRQHandler CMU_IRQHandler VCMP_IRQHandler LCD_IRQHandler
  * MSC_IRQHandler AES_IRQHandler EBI_IRQHandler EMU_IRQHandler 
  */
+ 
+ 
+void sinGenerate(sample *sample, double accoustFreq, double sampleRate)
+{
+    sample->length = round(sampleRate/accoustFreq);
+    sample->sampling_rate = sampleRate;
+    double f = accoustFreq/sampleRate;		// f * length = 1
+    for(int n=0;n<(sample->length); n++)
+    {
+        // 1024: amplitude of sin-wave
+        // +2048 to move the sin-wave up so no neg values anymore
+        sample->sound_files[n] = round(1024*sin(2*3.14*f*n))+2048;
+    }
+}
+
+void playSample(sample *dsamp)
+{
+    startTimer(dsamp->sampling_rate);
+    while((int) buttonReadout())
+    {
+    	int n = 0;
+        if(*TIMER1_CNT == 1 && n<dsamp->length)
+        {
+            // sending data to both channels and incrementing n for next round/data
+            *DAC0_CH0DATA = dsamp->sound_files[n];
+            *DAC0_CH1DATA = dsamp->sound_files[n];
+            n++;
+        }
+        if(n>=dsamp->length)
+        {
+            // end if end of sample is reached
+            break;
+        }
+    }
+    stopTimer();
+}
