@@ -1,13 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
-#include <stdio.h>
 
 #include "efm32gg.h"
-#include "player.h"
 #include "generator/sounds.h"
-
-#define CONST_PI 3.14159265358979323846
 
 /*
  * TIMER1 interrupt handler 
@@ -28,9 +23,13 @@ void __attribute__ ((interrupt)) TIMER1_IRQHandler()
 	counter++;
 
 	// Play a song
-	int index = counter % smoke.sampleCount;
-	*DAC0_CH0DATA = smoke.samples.leftChannel[index];
-	*DAC0_CH1DATA = smoke.samples.rightChannel[index];
+	if(counter > chord.sampleCount-1)
+	{
+		counter = 0;
+	}
+
+	*DAC0_CH0DATA = chord.samples[counter];
+	*DAC0_CH1DATA = chord.samples[counter];
 }
 
 /*
@@ -48,9 +47,6 @@ void __attribute__ ((interrupt)) GPIO_EVEN_IRQHandler()
 
 	// Quick test = Lighting up corresponding LED
 	*GPIO_PA_DOUT = ~(source << 8);
-
-	// Quick test = change frequency
-	FREQUENCY += 10;
 
 	// Clear the interrupt
 	*GPIO_IFC = *GPIO_IF;
@@ -71,9 +67,6 @@ void __attribute__ ((interrupt)) GPIO_ODD_IRQHandler()
 
 	// Quick test = Lighting up corresponding LED
 	*GPIO_PA_DOUT = ~(source << 8);
-
-	// Quick test = change frequency
-	FREQUENCY -= 10;
 
 	// Clear the interrupt
 	*GPIO_IFC = *GPIO_IF;

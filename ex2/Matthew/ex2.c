@@ -17,8 +17,8 @@
  */
 
 // Timer clock divided by DAC clock
-// 14000000/44100 => cca 317
-#define SAMPLE_PERIOD 317
+// 14000000/8000 => cca 1750
+#define SAMPLE_PERIOD 1750
 
 /*
  * Declaration of peripheral setup functions 
@@ -37,10 +37,10 @@ int main(void)
 	 * Call the peripheral setup functions 
 	 */
 	setupGPIO();
-	setupNVIC();
-
 	enableDAC();
 	enableTimer(SAMPLE_PERIOD);
+
+	setupNVIC();
 
 	/*
 	 * TODO for higher energy efficiency, sleep while waiting for
