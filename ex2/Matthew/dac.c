@@ -3,7 +3,7 @@
 
 #include "efm32gg.h"
 
-void setupDAC()
+void enableDAC()
 {
 	/*
 	 * TODO enable and set up the Digital-Analog Converter
@@ -16,40 +16,25 @@ void setupDAC()
 	 * timer interrupt
 	 */
 
-	// 1
+	// DAC0_CH0DATA goes from 0 to 4095 (12 bits)
+
+	// Enable the DAC clock
 	*CMU_HFPERCLKEN0 |= CMU2_HFPERCLKEN0_DAC0;
-	// 2
+
+	// Prescale DAC clock
 	*DAC0_CTRL = 0x50010;
-	// 3
+	
+	// Enable left and right audio channels
 	*DAC0_CH0CTRL = 1;
 	*DAC0_CH1CTRL = 1;
-	
-	
-	// Hacky square wave test
-	// DAC0_CH0DATA goes from 0 to 4095 (12 bits)
-	
-	/*
-	int counter = 0;
-	bool flip = true;
-	while (true)
-	{
-		counter++;
-		
-		if (counter % 1000 == 0)
-		{
-			flip = !flip;
-		}
+}
 
-		if (flip)
-		{
-			*DAC0_CH0DATA = 10;
-			*DAC0_CH1DATA = 10;
-		}
-		else
-		{
-			*DAC0_CH0DATA = 0;
-			*DAC0_CH1DATA = 0;
-		}
-	}
-	*/
+void disableDAC()
+{
+	// Disable the DAC clock
+	*CMU_HFPERCLKEN0 &= ~CMU2_HFPERCLKEN0_DAC0;
+
+	// Disable left and right audio channels
+	*DAC0_CH0CTRL = 0;
+	*DAC0_CH1CTRL = 0;
 }

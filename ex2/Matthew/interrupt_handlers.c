@@ -5,6 +5,7 @@
 
 #include "efm32gg.h"
 #include "player.h"
+#include "generator/sounds.h"
 
 #define CONST_PI 3.14159265358979323846
 
@@ -12,13 +13,7 @@
  * TIMER1 interrupt handler 
  */
 
-int FREQUENCY = 440; // Standard A tone
-int AMPLITUDE = 100; // Reasonable volume
-
 uint64_t counter = 0;
-bool flip = true;
-bool write = true;
-
 void __attribute__ ((interrupt)) TIMER1_IRQHandler()
 {
 	/*
@@ -32,61 +27,10 @@ void __attribute__ ((interrupt)) TIMER1_IRQHandler()
 	// Increment counter
 	counter++;
 
-	/*
-	// Quick test of the timer = plays square wave
-	if (counter % 100 == 0)
-	{
-		flip = !flip;
-	}
-
-	if(flip)
-	{
-		// *DAC0_CH0DATA = 10;
-		// *DAC0_CH1DATA = 10;
-	}
-	else
-	{
-		// *DAC0_CH0DATA = 0;
-		// *DAC0_CH1DATA = 0;
-	}
-	*/
-
-	// This function is invoked 48000 times a second
-	// The range for potential counter is 0-48000
-	// Sine wave has range/period 0-2PI
-	// Therefore 2PI / 48000 gives us 1hz tone
-	// Therefore FREQUENCY * (2PI / 48000) will give us the final frequency
-
-	//int currentTime = (counter/20000)*1000;
-	//play(currentTime);
-
-	//FREQUENCY = getFrequency();
-
-	// Square wave
-	if (counter % (20000/(FREQUENCY*2)) == 0)
-	{
-		flip = !flip;
-	}
-
-	if(flip)
-	{
-		*DAC0_CH0DATA = AMPLITUDE;
-		*DAC0_CH1DATA = AMPLITUDE;
-	}
-	else
-	{
-		*DAC0_CH0DATA = 0;
-		*DAC0_CH1DATA = 0;
-	}
-
-	/*
-	// Sine wave
-	//double sampleValue = sin(((FREQUENCY * 2.0 * CONST_PI) / 20000) * counter); // Actual sample value
-	//int dacValue = (int)(((sampleValue + 1.0) / 2.0 ) * AMPLITUDE); // Scale it to the register range
-
-	// *DAC0_CH0DATA = dacValue;
-	// *DAC0_CH1DATA = dacValue;
-	*/
+	// Play a song
+	int index = counter % smoke.sampleCount;
+	*DAC0_CH0DATA = smoke.samples.leftChannel[index];
+	*DAC0_CH1DATA = smoke.samples.rightChannel[index];
 }
 
 /*
@@ -103,7 +47,7 @@ void __attribute__ ((interrupt)) GPIO_EVEN_IRQHandler()
 	uint32_t source = *GPIO_IF;
 
 	// Quick test = Lighting up corresponding LED
-	//*GPIO_PA_DOUT = ~(source << 8);
+	*GPIO_PA_DOUT = ~(source << 8);
 
 	// Quick test = change frequency
 	FREQUENCY += 10;
@@ -126,7 +70,7 @@ void __attribute__ ((interrupt)) GPIO_ODD_IRQHandler()
 	uint32_t source = *GPIO_IF;
 
 	// Quick test = Lighting up corresponding LED
-	//*GPIO_PA_DOUT = ~(source << 8);
+	*GPIO_PA_DOUT = ~(source << 8);
 
 	// Quick test = change frequency
 	FREQUENCY -= 10;

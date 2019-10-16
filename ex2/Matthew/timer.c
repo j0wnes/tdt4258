@@ -6,7 +6,7 @@
 /*
  * function to setup the timer 
  */
-void setupTimer(uint16_t period)
+void enableTimer(uint16_t period)
 {
 	/*
 	 * TODO enable and set up the timer
@@ -21,10 +21,21 @@ void setupTimer(uint16_t period)
 	 * interrupt handler will not be invoked. 
 	 */
 
-	// 1
+	// Enable clock to timer
 	*CMU_HFPERCLKEN0 |= CMU2_HFPERCLKEN0_TIMER1;
-	// 2
+	
+	// Write the period to register
 	*TIMER1_TOP = period;
-	// 4
+	
+	// Start the timer
 	*TIMER1_CMD = 1;
+}
+
+void disableTimer()
+{
+	// Disable clock to timer
+	*CMU_HFPERCLKEN0 &= ~CMU2_HFPERCLKEN0_TIMER1;
+
+	// Stop the timer
+	*TIMER1_CMD = 0;
 }

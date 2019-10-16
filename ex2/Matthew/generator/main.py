@@ -181,9 +181,9 @@ def main():
     write_struct_type_to_file("sounds.h")
 
     # Add wav file samples
-    left_channel, right_channel, sample_rate = convert_wav_to_samples("chord.wav", sampling_rate)
-    left_channel, right_channel, sample_rate = scale_samples(left_channel, right_channel, sample_rate, amplitude)
-    save_samples_as_struct(left_channel, right_channel, sample_rate, "sounds.h", "chord")
+    #left_channel, right_channel, sample_rate = convert_wav_to_samples("chord.wav", sampling_rate)
+    #left_channel, right_channel, sample_rate = scale_samples(left_channel, right_channel, sample_rate, amplitude)
+    #save_samples_as_struct(left_channel, right_channel, sample_rate, "sounds.h", "chord")
 
     # Add generated samples
     sequence = generate_smoke_on_the_water_sequence()

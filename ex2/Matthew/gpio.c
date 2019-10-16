@@ -23,13 +23,10 @@ void setupGPIO()
 	// Quick test = Turn on LEDs D4-D8
 	//*GPIO_PA_DOUT = 0x0700;
 
+
 	// Buttons
 	*GPIO_PC_MODEL = 0x33333333; // Set pins A0-7 as input
 	*GPIO_PC_DOUT = 0xff; // Enable internal pull-ups
-	
-	// Quick test = Read button state values
-	//uint32_t buttonStates = *GPIO_PC_DIN;
-
 
 	// Quick test = Pooling of buttons and LEDs
 	/*

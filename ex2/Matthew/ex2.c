@@ -17,14 +17,14 @@
  */
 
 // Timer clock divided by DAC clock
-// 14000000/20000 => 700
-#define SAMPLE_PERIOD 700
+// 14000000/44100 => cca 317
+#define SAMPLE_PERIOD 317
 
 /*
  * Declaration of peripheral setup functions 
  */
-void setupTimer(uint16_t period);
-void setupDAC();
+void enableTimer(uint16_t period);
+void enableDAC();
 void setupNVIC();
 void setupGPIO();
 
@@ -37,20 +37,10 @@ int main(void)
 	 * Call the peripheral setup functions 
 	 */
 	setupGPIO();
-	setupDAC();
-	setupTimer(SAMPLE_PERIOD);
-
-	/*
-	 * Enable interrupt handling 
-	 */
 	setupNVIC();
 
-	// Generate a sequence
-	note_t note1 = { .toneFrequency = 440, .durationMs = 1000, .waveType = 0 };
-	note_t note2 = { .toneFrequency = 880, .durationMs = 1000, .waveType = 0 };
-	note_t melody[] = { note1, note2, note1, note2 };
-	sequence_t sequence = { .sequence = melody, .length = 4 };
-	setFallbackSequence(sequence);
+	enableDAC();
+	enableTimer(SAMPLE_PERIOD);
 
 	/*
 	 * TODO for higher energy efficiency, sleep while waiting for

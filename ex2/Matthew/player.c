@@ -5,9 +5,7 @@
 #include "efm32gg.h"
 #include "player.h"
 
-// Global variables
-//float globalCurrentFrequency = 0;
-//WaveType globalCurrentWaveType = SQUARE;
+// TODO REDO
 
 // Sequences
 sequence_t currentSequence;
