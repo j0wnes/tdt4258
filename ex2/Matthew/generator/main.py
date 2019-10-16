@@ -1,5 +1,4 @@
-import soundfile as sf
-import os
+import librosa
 
 
 def convert_note_to_frequency(note):
@@ -69,7 +68,7 @@ def generate_smoke_on_the_water_sequence():
     return sequence
 
 
-def generate_square_wave_samples_from_sequence(sequence, sample_rate, amplitude):
+def generate_square_wave_from_sequence(sequence, sample_rate, amplitude):
 
     left_channel = []
     right_channel = []
@@ -103,24 +102,23 @@ def generate_square_wave_samples_from_sequence(sequence, sample_rate, amplitude)
         return left_channel, right_channel, sample_rate
 
 
-def convert_wav_to_samples(filename):
-    data, sample_rate = sf.read(filename)
-    left_channel = data[..., 0]
-    right_channel = data[..., 1]
+def convert_wav_to_samples(filename, sampling_rate):
 
-    return left_channel, right_channel, sample_rate
+    # Read file and resample data
+    data, new_sampling_rate = librosa.load(filename, sr=sampling_rate, mono=False)
+
+    left_channel = data[0, ...]
+    right_channel = data[1, ...]
+
+    return left_channel, right_channel, new_sampling_rate
 
 
 def scale_samples(left_channel, right_channel, sample_rate, amplitude):
-    # Scale samples to 0-1 range
-    left_channel += 1.0
-    left_channel /= 2.0
-    right_channel += 1.0
-    right_channel /= 2.0
 
-    # Scale to the desired amplitude
-    left_channel *= amplitude
-    right_channel *= amplitude
+    # Scaling to range [0, amplitude]
+    # Scaling to range [a,b]: (b−a) * (x − min(x)) / (max(x) − min(x)) + a
+    left_channel = amplitude * (left_channel - left_channel.min()) / (left_channel.max() - left_channel.min())
+    right_channel = amplitude * (right_channel - right_channel.min()) / (right_channel.max() - right_channel.min())
 
     # Cast values to int16
     left_channel = left_channel.astype("int16")
@@ -175,17 +173,21 @@ def save_samples_as_struct(left_channel, right_channel, sample_rate, header_file
 
 def main():
 
+    # Parameters
+    sampling_rate = 44100
+    amplitude = 500
+
     # Create header file with types
     write_struct_type_to_file("sounds.h")
 
     # Add wav file samples
-    left_channel, right_channel, sample_rate = convert_wav_to_samples("chord.wav")
-    left_channel, right_channel, sample_rate = scale_samples(left_channel, right_channel, sample_rate, 500)
+    left_channel, right_channel, sample_rate = convert_wav_to_samples("chord.wav", sampling_rate)
+    left_channel, right_channel, sample_rate = scale_samples(left_channel, right_channel, sample_rate, amplitude)
     save_samples_as_struct(left_channel, right_channel, sample_rate, "sounds.h", "chord")
 
     # Add generated samples
     sequence = generate_smoke_on_the_water_sequence()
-    left_channel, right_channel, sample_rate = generate_square_wave_samples_from_sequence(sequence, 44100, 500)
+    left_channel, right_channel, sample_rate = generate_square_wave_from_sequence(sequence, sampling_rate, amplitude)
     save_samples_as_struct(left_channel, right_channel, sample_rate, "sounds.h", "smoke")
 
 
