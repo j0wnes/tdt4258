@@ -25,8 +25,8 @@ void __attribute__ ((interrupt)) TIMER1_IRQHandler()
 	* interrupt by writing 1 to TIMER1_IFC
 	*/
 
-	// Clear the interrupt
-	*TIMER1_IFC = 1;
+	// Clear the interrupt register
+	*TIMER1_IFC = *TIMER1_IF;
 
 	// Increment counter
 	counter++;
