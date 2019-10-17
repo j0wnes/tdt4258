@@ -1,8 +1,10 @@
 import librosa
+import math
 
 
 def convert_note_to_frequency(note):
     # A few of the most useful notes
+    # Based on equal temperament
     notes = {
         "C3": 130.81,
         "C#3/Db3": 138.59,
@@ -68,6 +70,44 @@ def generate_smoke_on_the_water_sequence():
     return sequence
 
 
+def generate_scooter_maria_sequence():
+
+    # E3 B3 E3 B3 A3 G3 G3 G3 | B3 G3 B3 G3 B3 G3 E3 E3 E3
+    sequence = [("E3", 200), ("X", 200), ("B3", 200), ("X", 200), ("E3", 200), ("X", 200), ("B3", 200),
+                ("A3", 200), ("G3", 200), ("X", 200), ("G3", 200), ("X", 200), ("G3", 200), ("X", 400),
+                ("B3", 200), ("G3", 200), ("X", 200), ("B3", 200), ("X", 200), ("G3", 200), ("X", 200),
+                ("B3", 200), ("G3", 200), ("E3", 200), ("X", 200), ("E3", 200),
+                ("X", 200), ("E3", 200), ("X", 600),]
+
+    return sequence
+
+
+def generate_sine_wave_from_sequence(sequence, sample_rate, amplitude):
+
+    mono_channel = []
+    counter = 0
+
+    for note, duration in sequence:
+
+        # Convert note to frequency
+        frequency = convert_note_to_frequency(note)
+        frequency_in_whole_range = frequency * (duration / 1000.0)
+        total_sample_count = sample_rate * (duration / 1000.0)
+
+        # Generate samples
+        for i in range(int(total_sample_count)):
+
+            # Scale to the desired range
+            sin_value = math.sin(i * (2 * math.pi * frequency_in_whole_range)/total_sample_count)
+            scaled_sin_value = int(((sin_value + 1.0)/2.0) * amplitude)
+            mono_channel.append(scaled_sin_value)
+
+            counter += 1
+
+    # Return samples
+    return mono_channel
+
+
 def generate_square_wave_from_sequence(sequence, sample_rate, amplitude):
 
     mono_channel = []
@@ -95,18 +135,55 @@ def generate_square_wave_from_sequence(sequence, sample_rate, amplitude):
 
             counter += 1
 
-    # Return samples and
-    return mono_channel, sample_rate
+    # Return samples
+    return mono_channel
+
+
+def generate_sawtooth_wave_from_sequence(sequence, sample_rate, amplitude):
+
+    # Approximation coefficient
+    coefficient = 12
+
+    mono_channel = []
+    counter = 0
+
+    for note, duration in sequence:
+
+        # Convert note to frequency
+        frequency = convert_note_to_frequency(note)
+        frequency_in_whole_range = frequency * (duration / 1000.0)
+        total_sample_count = sample_rate * (duration / 1000.0)
+
+        # Generate samples
+        for i in range(int(total_sample_count)):
+
+            # Approximation of sawtooth wave
+            output = 0.0
+            for n in range(1, coefficient):
+                output += math.sin(n * i * (2 * math.pi * frequency_in_whole_range) / total_sample_count) / n
+
+            mono_channel.append(output * (2.0 / math.pi))
+            counter += 1
+
+    # Scaling to range [0, amplitude]
+    # Scaling to range [a,b]: (b−a) * (x − min(x)) / (max(x) − min(x)) + a
+    mono_max = max(mono_channel)
+    mono_min = min(mono_channel)
+    for i in range(len(mono_channel)):
+        mono_channel[i] = int(amplitude * (mono_channel[i] - mono_min) / (mono_max - mono_min))
+
+    # Return samples
+    return mono_channel
 
 
 def convert_wav_to_samples(filename, sampling_rate):
 
     # Read file and resample data
-    data, new_sampling_rate = librosa.load(filename, sr=sampling_rate, mono=True)
-    return data, new_sampling_rate
+    mono_channel, _ = librosa.load(filename, sr=sampling_rate, mono=True)
+    return mono_channel
 
 
-def scale_samples(mono_channel, sample_rate, amplitude):
+def scale_wav_samples(mono_channel, amplitude):
 
     # Scaling to range [0, amplitude]
     # Scaling to range [a,b]: (b−a) * (x − min(x)) / (max(x) − min(x)) + a
@@ -115,7 +192,7 @@ def scale_samples(mono_channel, sample_rate, amplitude):
     # Cast values to int16
     mono_channel = mono_channel.astype("int16")
 
-    return mono_channel, sample_rate
+    return mono_channel
 
 
 def write_struct_type_to_file(header_file):
@@ -158,21 +235,38 @@ def save_samples_as_struct(mono_channel, sample_rate, header_file, struct_name):
 def main():
 
     # Parameters
-    sampling_rate = 8000
-    amplitude = 100
+    sampling_rate = 5000
+    amplitude = 250
 
     # Create header file with types
     write_struct_type_to_file("sounds.h")
 
-    # Add wav file samples
-    mono_channel, sample_rate = convert_wav_to_samples("explo.wav", sampling_rate)
-    mono_channel, sample_rate = scale_samples(mono_channel, sample_rate, amplitude)
-    save_samples_as_struct(mono_channel, sample_rate, "sounds.h", "chord")
+    # Wav files conversion
+    # Laugh
+    mono_channel = convert_wav_to_samples("laugh.wav", sampling_rate)
+    mono_channel = scale_wav_samples(mono_channel, amplitude)
+    save_samples_as_struct(mono_channel, sampling_rate, "sounds.h", "laugh")
 
-    # Add generated samples
+    # Scream
+    mono_channel = convert_wav_to_samples("scream.wav", sampling_rate)
+    mono_channel = scale_wav_samples(mono_channel, amplitude)
+    save_samples_as_struct(mono_channel, sampling_rate, "sounds.h", "scream")
+
+    # Explosion
+    mono_channel = convert_wav_to_samples("explosion.wav", sampling_rate)
+    mono_channel = scale_wav_samples(mono_channel, amplitude)
+    save_samples_as_struct(mono_channel, sampling_rate, "sounds.h", "explosion")
+
+    # Two songs available
+    # Deep purple - Smoke on the water... on sine wave
     sequence = generate_smoke_on_the_water_sequence()
-    mono_channel, sample_rate = generate_square_wave_from_sequence(sequence, sampling_rate, amplitude)
-    save_samples_as_struct(mono_channel, sample_rate, "sounds.h", "smoke")
+    mono_channel = generate_sine_wave_from_sequence(sequence, sampling_rate, amplitude)
+    save_samples_as_struct(mono_channel, sampling_rate, "sounds.h", "smoke")
+
+    # Scooter - Maria... on sawtooth wave
+    sequence = generate_scooter_maria_sequence()
+    mono_channel = generate_sawtooth_wave_from_sequence(sequence, sampling_rate, amplitude)
+    save_samples_as_struct(mono_channel, sampling_rate, "sounds.h", "maria")
 
 
 main()

@@ -4,7 +4,6 @@
 #include <stdio.h>
 
 #include "efm32gg.h"
-#include "player.h"
 
 /*
  * TODO calculate the appropriate sample period for the sound wave(s) you 
@@ -17,8 +16,8 @@
  */
 
 // Timer clock divided by DAC clock
-// 14000000/8000 => cca 1750
-#define SAMPLE_PERIOD 1750
+// 14000000/5000 => cca 2800
+#define SAMPLE_PERIOD 2800
 
 /*
  * Declaration of peripheral setup functions 

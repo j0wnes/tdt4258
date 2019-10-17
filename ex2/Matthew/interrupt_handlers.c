@@ -23,13 +23,13 @@ void __attribute__ ((interrupt)) TIMER1_IRQHandler()
 	counter++;
 
 	// Play a song
-	if(counter > chord.sampleCount-1)
+	if(counter > maria.sampleCount-1)
 	{
 		counter = 0;
 	}
 
-	*DAC0_CH0DATA = chord.samples[counter];
-	*DAC0_CH1DATA = chord.samples[counter];
+	*DAC0_CH0DATA = maria.samples[counter];
+	*DAC0_CH1DATA = maria.samples[counter];
 }
 
 /*
