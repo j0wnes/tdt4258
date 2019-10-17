@@ -45,8 +45,14 @@ int main(void)
 	 * TODO for higher energy efficiency, sleep while waiting for
 	 * interrupts instead of infinite loop for busy-waiting 
 	 */
-	__asm__ ("wfi;");
 
+	*SCR = 0x6;
+
+	while(1)
+    {
+        __asm__ ("wfi;");
+    }
+    // /n/t
 	return 0;
 }
 

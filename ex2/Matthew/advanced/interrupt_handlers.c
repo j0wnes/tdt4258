@@ -53,6 +53,7 @@ void __attribute__ ((interrupt)) GPIO_EVEN_IRQHandler()
 	* TODO handle button pressed event, remember to clear pending
 	* interrupt
 	*/
+    *SCR = 0x0;
 
 	// Sanity test = Lighting up corresponding LED
 	*GPIO_PA_DOUT = ~(*GPIO_IF << 8);
@@ -73,6 +74,7 @@ void __attribute__ ((interrupt)) GPIO_ODD_IRQHandler()
 	* TODO handle button pressed event, remember to clear pending
 	* interrupt 
 	*/
+    *SCR = 0x0;
 
 	// Sanity test = Lighting up corresponding LED
 	*GPIO_PA_DOUT = ~(*GPIO_IF << 8);
@@ -110,6 +112,7 @@ void playSound()
 	else
 	{
 		currentSound = NULL;
+		*SCR = 0x6;
 	}
 
 	// Reset counter
