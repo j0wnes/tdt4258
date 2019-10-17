@@ -26,7 +26,10 @@ void enableTimer(uint16_t period)
 	
 	// Write the period to register
 	*TIMER1_TOP = period;
-	
+
+	// Enable timer interrupt generation but no execution
+	*TIMER1_IEN = 1;
+
 	// Start the timer
 	*TIMER1_CMD = 1;
 }
