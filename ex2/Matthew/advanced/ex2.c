@@ -52,7 +52,6 @@ int main(void)
     {
         __asm__ ("wfi;");
     }
-    // /n/t
 	return 0;
 }
 
