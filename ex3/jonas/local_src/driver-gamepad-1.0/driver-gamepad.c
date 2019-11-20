@@ -28,6 +28,7 @@ int template_open(struct inode *inode, struct file *filp);
 int template_release(struct inode *inode, struct file *filp);
 irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs);
 
+
 #define DEVICE_NAME "GPIO"
 
 static uint8_t irq_value;
@@ -54,19 +55,6 @@ struct file_operations template_fops = {
  *
  * Returns 0 if successfull, otherwise -1
  */
-
-// setting values in registers (compare to first and second assignment)
-// iowrite ldd3 chapter 9, p. 250
-void gpio_init()
-{
-    // see compendium p. 26ff
-    uint32_t l = ioread32(CMU2_HFPERCLKEN0_GPIO) | ioread32(CMU_HFCORECLKEN0);
-    iowrite32(l, CMU_HFCORECLKEN0);             // enable clock to GPIO
-    iowrite32(0x33333333,GPIO_PC_MODEL);        // set pins 0-7 as input
-    iowrite32(0xFF,GPIO_PC_DOUT);               // enable internal pull-up
-    iowrite32(0x22222222,GPIO_EXTIPSELL);       // set up interrupt
-    iowrite32(0xFF,GPIO_EXTIRISE);              // ...on rising edge
-}
 
 
 static int __init template_init(void)
@@ -115,7 +103,12 @@ static int __init template_init(void)
     }
 
     // initializing gamepad, comparable to second assignment
-    gpio_init();
+    // see compendium p. 26ff
+    //*CMU_HFCORECLKEN0 |= *CMU2_HFPERCLKEN0_GPIO;             // enable clock to GPIO
+    *GPIO_PC_MODEL = 0x33333333;        // set pins 0-7 as input
+    *GPIO_PC_DOUT = 0xFF;               // enable internal pull-up
+    *GPIO_EXTIPSELL = 0x22222222;       // set up interrupt
+    *GPIO_EXTIRISE = 0xFF;              // ...on rising edge
     // interrupts for even and odd GPIO ports are 17 and 18 (table 5.2 in compendium)
     // requesting interrupt channel (ldd3 chapter 10, p. 259f)
     if(request_irq(17, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
@@ -129,8 +122,8 @@ static int __init template_init(void)
         return -1;
     }
 
-    iowrite32(0xFF,GPIO_IEN);           // enable interrupt generation
-    iowrite32(0xFF,GPIO_IFC);           // clearing all possible interrupts
+    *GPIO_IEN = 0xFF;           // enable interrupt generation
+    *GPIO_IFC = 0xFF;           // clearing all possible interrupts
 
     // ldd3, chapter 3, p. 57
     cdev_init(&template_cdev, &template_fops);
@@ -167,20 +160,20 @@ static void __exit template_cleanup(void)
 
     unregister_chrdev_region(dev_id, 1);
 
-	 printk("Short life for a small module...\n");
+    printk("Short life for a small module...\n");
 }
 
 // ldd3 chapter 3, p. 59
 int template_open(struct inode *inode, struct file *filp)
         {
-            printk(KERN_INFO "function template_open was called")
+            printk(KERN_INFO "function template_open was called");
              return 0;          /* success */
         }
 
 // ldd3 chapter 3, p. 59
 int template_release(struct inode *inode, struct file *filp)
         {
-            printk(KERN_INFO "function template_release was called")
+            printk(KERN_INFO "function template_release was called");
             return 0;
         }
 
@@ -188,7 +181,7 @@ int template_release(struct inode *inode, struct file *filp)
 ssize_t template_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
         {
             // value from interrupt handler should be copied/made accessabe to user
-            copy_to_user(buff, *irq_value, 1);
+            copy_to_user(buf, &irq_value, 1);
             return 0;
         }
 
@@ -198,14 +191,14 @@ ssize_t template_write(struct file *filp, const char __user *buf, size_t count, 
             return 0;
         }
 
-// ldd3 chapter 10, p. 267f: interrupt handler
+// ldd3 chapter 10, p. 276f: interrupt handler
 irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs)
         {
             // see also compendium p. 28
             // store value of interrupt so that it can be read later
-            irq_value = 0xFF & ~ioread8(GPIO_PC_DIN);
+            irq_value = 0xFF & *GPIO_PC_DIN;
             // clear interrupt
-            iowrite32(0xFF,GPIO_IFC);
+            *GPIO_IFC = 0xFF;
             return IRQ_HANDLED;
         }
 
