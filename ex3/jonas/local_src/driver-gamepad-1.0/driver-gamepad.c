@@ -2,38 +2,37 @@
  * This is a demo Linux kernel module.
  */
 
-// added everything mentioned in chapters 2 and 3 of the book
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/fs.h>
-#include <linux/ioport.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
-#include <linux/moduleparam.h>
-#include <linux/kdev_t.h>
-#include <linux/ioport.h>
 #include <linux/interrupt.h>
-#include <asm/io.h>
+#include <linux/signal.h>
 #include <asm/uaccess.h>
-#include <asm/signal.h>
-#include <asm/siginfo.h>
-#include <linux/mempool.h>
+#include <asm/io.h>
+#include <stdbool.h>
 #include "efm32gg.h"
-
 
 ssize_t template_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
 ssize_t template_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos);
 int template_open(struct inode *inode, struct file *filp);
 int template_release(struct inode *inode, struct file *filp);
 irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs);
+static int template_fasync(int fd, struct file* filp, int mode);
 
 
-#define DEVICE_NAME "GPIO"
+#define DEVICE_NAME "template"
 
 static uint8_t irq_value;
 static dev_t dev_id;
 struct cdev template_cdev;
+struct class *cl;
+struct fasync_struct* async_queue;
+dev_t devno;
+
 
 
 // ldd3 chapter 3, p. 53:
@@ -45,7 +44,8 @@ struct file_operations template_fops = {
         // .ioctl =    template_ioctl, not used
         .open =     template_open,
         .release =  template_release,
-        };
+        .fasync = template_fasync
+};
 
 /*
  * template_init - function to insert this module into kernel space
@@ -67,6 +67,9 @@ static int __init template_init(void)
         printk(KERN_ERR "Error requesting memory access\n");
         return -1;
     }
+
+    cl = class_create(THIS_MODULE, DEVICE_NAME);
+    device_create(cl, NULL, devno, NULL, DEVICE_NAME);
 
     // lld3 chapter 9, p. 249
     // requesting memory regions
@@ -113,12 +116,12 @@ static int __init template_init(void)
     // requesting interrupt channel (ldd3 chapter 10, p. 259f)
     if(request_irq(17, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
     {
-        printk(KERN_ERR "Error in initiating inerrupt handler irq17");
+        printk(KERN_ERR "Error in initiating interrupt handler irq17");
         return -1;
     }
     if(request_irq(18, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
     {
-        printk(KERN_ERR "Error in initiating inerrupt handler irq18");
+        printk(KERN_ERR "Error in initiating interrupt handler irq18");
         return -1;
     }
 
@@ -134,7 +137,7 @@ static int __init template_init(void)
         printk(KERN_NOTICE "Error adding template");
     }
     printk("Hello World, here is your module speaking\n");
-	return 0;
+    return 0;
 }
 
 /*
@@ -165,42 +168,51 @@ static void __exit template_cleanup(void)
 
 // ldd3 chapter 3, p. 59
 int template_open(struct inode *inode, struct file *filp)
-        {
-            printk(KERN_INFO "function template_open was called");
-             return 0;          /* success */
-        }
+{
+    printk(KERN_INFO "function template_open was called");
+    return 0;          /* success */
+}
 
 // ldd3 chapter 3, p. 59
 int template_release(struct inode *inode, struct file *filp)
-        {
-            printk(KERN_INFO "function template_release was called");
-            return 0;
-        }
+{
+    printk(KERN_INFO "function template_release was called");
+    return 0;
+}
 
 // ldd3 chapter 3, p. 67
 ssize_t template_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
-        {
-            // value from interrupt handler should be copied/made accessabe to user
-            copy_to_user(buf, &irq_value, 1);
-            return 0;
-        }
+{
+// value from interrupt handler should be copied/made accessabe to user
+copy_to_user(buf, &irq_value, 1);
+
+return 0;
+}
 
 // ldd3 chapter 3, p. 68f
 ssize_t template_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
-        {
-            return 0;
-        }
+{
+return 0;
+}
 
 // ldd3 chapter 10, p. 276f: interrupt handler
 irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs)
-        {
-            // see also compendium p. 28
-            // store value of interrupt so that it can be read later
-            irq_value = 0xFF & *GPIO_PC_DIN;
-            // clear interrupt
-            *GPIO_IFC = 0xFF;
-            return IRQ_HANDLED;
-        }
+{
+    // see also compendium p. 28
+    // store value of interrupt so that it can be read later
+    irq_value = *GPIO_IF;
+    // clear interrupt
+    *GPIO_IFC = 0xFF;
+    printk("interrupt %d", irq_value);
+    if (async_queue) {
+        kill_fasync(&async_queue, SIGIO, POLL_IN);
+    }
+    return IRQ_HANDLED;
+}
+// ldd3 chapter 6, p. 153ff
+static int template_fasync(int fd, struct file* filp, int mode) {
+    return fasync_helper(fd, filp, mode, &async_queue);
+}
 
 module_init(template_init);
 module_exit(template_cleanup);
