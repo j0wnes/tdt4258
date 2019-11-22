@@ -21,11 +21,19 @@ void teardown_display() {
     close(display_descriptor);
 }
 
+void clear_rectangle(int x, int y, int width, int height) {
+    draw_rectangle_color(x, y, width, height, BACKGROUND_COLOR);
+}
+
 void draw_rectangle(int x, int y, int width, int height) {
+    draw_rectangle_color(x, y, width, height, GAME_COLOR);
+}
+
+void draw_rectangle_color(int x, int y, int width, int height, int color) {
     int i, j;
     for (i = y; i < (y + height); i++) {
         for (j = x; j < (x + width); j++) {
-            display[i * DISPLAY_WIDTH + j] = GAME_COLOR;
+            display[i * DISPLAY_WIDTH + j] = color;
         }
     }
 
