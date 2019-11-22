@@ -31,7 +31,6 @@ static dev_t dev_id;
 struct cdev template_cdev;
 struct class *cl;
 struct fasync_struct* async_queue;
-dev_t devno;
 
 
 
@@ -68,9 +67,6 @@ static int __init template_init(void)
         return -1;
     }
 
-    cl = class_create(THIS_MODULE, DEVICE_NAME);
-    device_create(cl, NULL, devno, NULL, DEVICE_NAME);
-
     // lld3 chapter 9, p. 249
     // requesting memory regions
     // if everything is ok, non-NULL pointer is returned; error --> NULL-pointer is returned
@@ -104,7 +100,23 @@ static int __init template_init(void)
         printk(KERN_ERR "Error allocating memory region GPIO_IFC\n");
         return -1;
     }
+    if (!request_mem_region((unsigned long)GPIO_IF, 4, DEVICE_NAME))
+    {
+        printk(KERN_ERR "Error allocating memory region GPIO_IFC\n");
+        return -1;
+    }
 
+    // ldd3, chapter 3, p. 57
+    cdev_init(&template_cdev, &template_fops);
+    template_cdev.owner = THIS_MODULE;
+    template_cdev.ops = &template_fops;
+    if(cdev_add (&template_cdev, dev_id, 1))
+    {
+        printk(KERN_NOTICE "Error adding template");
+    }
+
+    cl = class_create(THIS_MODULE, DEVICE_NAME);
+    device_create(cl, NULL, dev_id, NULL, DEVICE_NAME);
 
     printk("Hello World, here is your module speaking\n");
     return 0;
@@ -126,6 +138,7 @@ static void __exit template_cleanup(void)
     release_mem_region((unsigned long)GPIO_EXTIRISE, 4);
     release_mem_region((unsigned long)GPIO_IEN, 4);
     release_mem_region((unsigned long)GPIO_IFC, 4);
+    release_mem_region((unsigned long)GPIO_IF, 4);
 
     // ldd3 chapter 10, p. 260: freeing interrupt channel again
     free_irq(17, &template_cdev);
@@ -162,15 +175,6 @@ int template_open(struct inode *inode, struct file *filp)
     *GPIO_IEN = 0xFF;           // enable interrupt generation
     *GPIO_IFC = 0xFF;           // clearing all possible interrupts
 
-    // ldd3, chapter 3, p. 57
-    cdev_init(&template_cdev, &template_fops);
-    template_cdev.owner = THIS_MODULE;
-    template_cdev.ops = &template_fops;
-    if(cdev_add (&template_cdev, dev_id, 1))
-    {
-        printk(KERN_NOTICE "Error adding template");
-    }
-    
     printk(KERN_INFO "function template_open was called");
     return 0;          /* success */
 }
