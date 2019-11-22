@@ -105,37 +105,7 @@ static int __init template_init(void)
         return -1;
     }
 
-    // initializing gamepad, comparable to second assignment
-    // see compendium p. 26ff
-    //*CMU_HFCORECLKEN0 |= *CMU2_HFPERCLKEN0_GPIO;             // enable clock to GPIO
-    *GPIO_PC_MODEL = 0x33333333;        // set pins 0-7 as input
-    *GPIO_PC_DOUT = 0xFF;               // enable internal pull-up
-    *GPIO_EXTIPSELL = 0x22222222;       // set up interrupt
-    *GPIO_EXTIRISE = 0xFF;              // ...on rising edge
-    // interrupts for even and odd GPIO ports are 17 and 18 (table 5.2 in compendium)
-    // requesting interrupt channel (ldd3 chapter 10, p. 259f)
-    if(request_irq(17, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
-    {
-        printk(KERN_ERR "Error in initiating interrupt handler irq17");
-        return -1;
-    }
-    if(request_irq(18, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
-    {
-        printk(KERN_ERR "Error in initiating interrupt handler irq18");
-        return -1;
-    }
 
-    *GPIO_IEN = 0xFF;           // enable interrupt generation
-    *GPIO_IFC = 0xFF;           // clearing all possible interrupts
-
-    // ldd3, chapter 3, p. 57
-    cdev_init(&template_cdev, &template_fops);
-    template_cdev.owner = THIS_MODULE;
-    template_cdev.ops = &template_fops;
-    if(cdev_add (&template_cdev, dev_id, 1))
-    {
-        printk(KERN_NOTICE "Error adding template");
-    }
     printk("Hello World, here is your module speaking\n");
     return 0;
 }
@@ -169,6 +139,38 @@ static void __exit template_cleanup(void)
 // ldd3 chapter 3, p. 59
 int template_open(struct inode *inode, struct file *filp)
 {
+    // initializing gamepad, comparable to second assignment
+    // see compendium p. 26ff
+    //*CMU_HFCORECLKEN0 |= *CMU2_HFPERCLKEN0_GPIO;             // enable clock to GPIO
+    *GPIO_PC_MODEL = 0x33333333;        // set pins 0-7 as input
+    *GPIO_PC_DOUT = 0xFF;               // enable internal pull-up
+    *GPIO_EXTIPSELL = 0x22222222;       // set up interrupt
+    *GPIO_EXTIRISE = 0xFF;              // ...on rising edge
+    // interrupts for even and odd GPIO ports are 17 and 18 (table 5.2 in compendium)
+    // requesting interrupt channel (ldd3 chapter 10, p. 259f)
+    if(request_irq(17, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
+    {
+        printk(KERN_ERR "Error in initiating interrupt handler irq17");
+        return -1;
+    }
+    if(request_irq(18, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
+    {
+        printk(KERN_ERR "Error in initiating interrupt handler irq18");
+        return -1;
+    }
+
+    *GPIO_IEN = 0xFF;           // enable interrupt generation
+    *GPIO_IFC = 0xFF;           // clearing all possible interrupts
+
+    // ldd3, chapter 3, p. 57
+    cdev_init(&template_cdev, &template_fops);
+    template_cdev.owner = THIS_MODULE;
+    template_cdev.ops = &template_fops;
+    if(cdev_add (&template_cdev, dev_id, 1))
+    {
+        printk(KERN_NOTICE "Error adding template");
+    }
+    
     printk(KERN_INFO "function template_open was called");
     return 0;          /* success */
 }
