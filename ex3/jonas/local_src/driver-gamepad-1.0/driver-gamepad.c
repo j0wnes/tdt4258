@@ -112,7 +112,7 @@ static int __init template_init(void)
     template_cdev.ops = &template_fops;
     if(cdev_add (&template_cdev, dev_id, 1))
     {
-        printk(KERN_NOTICE "Error adding template");
+        printk(KERN_NOTICE "Error adding template\n");
     }
 
     cl = class_create(THIS_MODULE, DEVICE_NAME);
@@ -163,26 +163,26 @@ int template_open(struct inode *inode, struct file *filp)
     // requesting interrupt channel (ldd3 chapter 10, p. 259f)
     if(request_irq(17, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
     {
-        printk(KERN_ERR "Error in initiating interrupt handler irq17");
+        printk(KERN_ERR "Error in initiating interrupt handler irq17\n");
         return -1;
     }
     if(request_irq(18, (irq_handler_t) short_probing, 0, DEVICE_NAME, &template_cdev))
     {
-        printk(KERN_ERR "Error in initiating interrupt handler irq18");
+        printk(KERN_ERR "Error in initiating interrupt handler irq18\n");
         return -1;
     }
 
     *GPIO_IEN = 0xFF;           // enable interrupt generation
     *GPIO_IFC = 0xFF;           // clearing all possible interrupts
 
-    printk(KERN_INFO "function template_open was called");
+    printk(KERN_INFO "function template_open was called\n");
     return 0;          /* success */
 }
 
 // ldd3 chapter 3, p. 59
 int template_release(struct inode *inode, struct file *filp)
 {
-    printk(KERN_INFO "function template_release was called");
+    printk(KERN_INFO "function template_release was called\n");
     return 0;
 }
 
@@ -209,7 +209,7 @@ irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs)
     irq_value = *GPIO_IF;
     // clear interrupt
     *GPIO_IFC = 0xFF;
-    printk("interrupt %d", irq_value);
+    printk("interrupt %d \n", irq_value);
     if (async_queue) {
         kill_fasync(&async_queue, SIGIO, POLL_IN);
     }
