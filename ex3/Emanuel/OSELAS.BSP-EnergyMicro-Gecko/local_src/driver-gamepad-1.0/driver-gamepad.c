@@ -210,12 +210,13 @@ irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs)
     // clear interrupt
     *GPIO_IFC = 0xFF;
     printk("interrupt %d \n", irq_value);
+    // ldd3, chapter 6, p 171:
     if (async_queue) {
         kill_fasync(&async_queue, SIGIO, POLL_IN);
     }
     return IRQ_HANDLED;
 }
-// ldd3 chapter 6, p. 153ff
+// ldd3 chapter 6, p. 170f
 static int template_fasync(int fd, struct file* filp, int mode) {
     return fasync_helper(fd, filp, mode, &async_queue);
 }
