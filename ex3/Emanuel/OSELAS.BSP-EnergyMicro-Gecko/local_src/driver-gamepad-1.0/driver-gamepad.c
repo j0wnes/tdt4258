@@ -189,7 +189,7 @@ int template_release(struct inode *inode, struct file *filp)
 // ldd3 chapter 3, p. 67
 ssize_t template_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-// value from interrupt handler should be copied/made accessabe to user
+// value from interrupt handler should be copied/made accessable to user
 copy_to_user(buf, &irq_value, 1);
 
 return 0;
@@ -216,7 +216,7 @@ irqreturn_t short_probing(int irq, void *dev_id, struct pt_regs *regs)
     }
     return IRQ_HANDLED;
 }
-// ldd3 chapter 6, p. 170f
+// ldd3 chapter 6, p. 169f: asynchronous notification
 static int template_fasync(int fd, struct file* filp, int mode) {
     return fasync_helper(fd, filp, mode, &async_queue);
 }
