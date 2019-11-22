@@ -21,6 +21,8 @@ int ball_pos_y;
 int paddle_pos_p1;
 int paddle_pos_p2;
 int ball_direction;
+
+int game_speed = 50000;
 int end_game = 0;
 
 void redraw_paddles() {
@@ -98,7 +100,7 @@ int move_ball() {
 void game_loop() {
     int i = 0;
     while (!end_game) {
-        if (i == 200000) {
+        if (i >= game_speed) {
             int valid = move_ball();
             if (!valid) return;
             i = 0;
@@ -125,6 +127,20 @@ void init_game() {
 
 void set_end_game() {
     end_game = 1;
+}
+
+void toggle_game_speed() {
+    switch (game_speed) {
+        case 50000:
+            game_speed = 25000;
+            break;
+        case 25000:
+            game_speed = 10000;
+            break;
+        default:
+            game_speed = 50000;
+            break;
+    }
 }
 
 void move_paddle_up_p1() {
@@ -186,6 +202,10 @@ void keypress_handler(int signal) {
                 break;
             case 4:
             case 64:
+                toggle_game_speed();
+                break;
+            case 1:
+            case 16:
                 set_end_game();
                 break;
         }
